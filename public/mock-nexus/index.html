@@ -1,0 +1,741 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NEXUS//OS — The shell for security engineers</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&family=Geist+Mono:wght@400;500;600&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg: #050a07;
+    --bg-2: #0a1410;
+    --bg-3: #0f1f18;
+    --panel: #0c1812;
+    --line: #1a2e24;
+    --line-2: #244235;
+    --green: #4ade80;
+    --green-dim: #22c55e;
+    --green-deep: #14532d;
+    --green-glow: rgba(74, 222, 128, 0.25);
+    --amber: #fbbf24;
+    --red: #f87171;
+    --cyan: #67e8f9;
+    --text: #d4f5e2;
+    --text-2: #8fb8a3;
+    --muted: #4a6b58;
+    --white: #f0fff4;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'JetBrains Mono', monospace;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    overflow-x: hidden;
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Background scanlines + grid */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -2;
+    background:
+      radial-gradient(ellipse at 20% 10%, rgba(74, 222, 128, 0.08) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 90%, rgba(74, 222, 128, 0.05) 0%, transparent 50%);
+  }
+  body::after {
+    content: '';
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background-image:
+      linear-gradient(rgba(74, 222, 128, 0.04) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(74, 222, 128, 0.04) 1px, transparent 1px);
+    background-size: 32px 32px;
+  }
+
+  /* Status bar at top */
+  .statusbar {
+    background: var(--green-deep);
+    color: var(--white);
+    padding: 6px 20px;
+    font-size: 11px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid var(--green-dim);
+    letter-spacing: 0.04em;
+  }
+  .statusbar .left {
+    display: flex;
+    gap: 16px;
+    align-items: center;
+  }
+  .statusbar .pulse {
+    width: 8px; height: 8px;
+    background: var(--green);
+    border-radius: 50%;
+    box-shadow: 0 0 8px var(--green);
+    animation: pulse 1.5s ease-in-out infinite;
+  }
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.4; }
+  }
+  .statusbar .right {
+    display: flex;
+    gap: 24px;
+    color: rgba(240, 255, 244, 0.7);
+  }
+
+  /* Top navigation */
+  nav {
+    background: var(--bg);
+    border-bottom: 1px solid var(--line);
+    padding: 14px 32px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    position: sticky;
+    top: 0;
+    z-index: 50;
+  }
+  .brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    color: var(--white);
+    text-decoration: none;
+  }
+  .brand-mark {
+    width: 32px; height: 32px;
+    border: 2px solid var(--green);
+    background: var(--bg-2);
+    position: relative;
+    box-shadow: 0 0 16px var(--green-glow);
+  }
+  .brand-mark::before {
+    content: '';
+    position: absolute;
+    inset: 4px;
+    border: 1px solid var(--green);
+    transform: rotate(45deg);
+  }
+  .brand-mark::after {
+    content: '';
+    position: absolute;
+    top: 50%; left: 50%;
+    width: 6px; height: 6px;
+    background: var(--green);
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 8px var(--green);
+  }
+  .brand-name {
+    font-weight: 700;
+    font-size: 18px;
+    letter-spacing: 0.02em;
+    color: var(--white);
+  }
+  .brand-name .slash { color: var(--green); }
+  .brand-name .ver {
+    font-size: 11px;
+    color: var(--muted);
+    margin-left: 8px;
+    font-weight: 400;
+  }
+  .nav-links {
+    display: flex;
+    gap: 4px;
+  }
+  .nav-links a {
+    color: var(--text-2);
+    text-decoration: none;
+    font-size: 13px;
+    padding: 8px 14px;
+    transition: all 0.2s;
+    position: relative;
+  }
+  .nav-links a:hover {
+    color: var(--green);
+    background: var(--bg-2);
+  }
+  .nav-links a::before {
+    content: '> ';
+    color: var(--green);
+    opacity: 0;
+    transition: opacity 0.15s;
+  }
+  .nav-links a:hover::before { opacity: 1; }
+  .nav-actions {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+  }
+  .nav-action {
+    color: var(--text-2);
+    text-decoration: none;
+    font-size: 12px;
+    padding: 8px 12px;
+  }
+  .nav-cta {
+    background: var(--green);
+    color: var(--bg);
+    padding: 8px 16px;
+    font-weight: 700;
+    font-size: 12px;
+    text-decoration: none;
+    border: 1px solid var(--green);
+    transition: all 0.15s;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    box-shadow: 0 0 16px var(--green-glow);
+  }
+  .nav-cta:hover {
+    background: var(--white);
+    border-color: var(--white);
+    box-shadow: 0 0 24px var(--green);
+  }
+
+  /* HERO */
+  .hero {
+    padding: 60px 32px 80px;
+    max-width: 1480px;
+    margin: 0 auto;
+    display: grid;
+    grid-template-columns: 1fr 1.05fr;
+    gap: 56px;
+    align-items: center;
+  }
+
+  .ascii-tag {
+    color: var(--green);
+    font-size: 11px;
+    line-height: 1.1;
+    margin-bottom: 28px;
+    white-space: pre;
+    text-shadow: 0 0 8px var(--green-glow);
+  }
+
+  .badge-row {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    margin-bottom: 32px;
+  }
+  .pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 4px 10px;
+    border: 1px solid var(--line-2);
+    background: var(--bg-2);
+    font-size: 11px;
+    color: var(--text-2);
+  }
+  .pill .dot {
+    width: 6px; height: 6px;
+    border-radius: 50%;
+    background: var(--green);
+    box-shadow: 0 0 6px var(--green);
+  }
+  .pill .dot.amber { background: var(--amber); box-shadow: 0 0 6px var(--amber); }
+  .pill .v { color: var(--green); }
+
+  h1 {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: clamp(40px, 5.6vw, 80px);
+    font-weight: 700;
+    line-height: 1.02;
+    letter-spacing: -0.025em;
+    margin-bottom: 28px;
+    color: var(--white);
+  }
+  h1 .green {
+    color: var(--green);
+    text-shadow: 0 0 24px var(--green-glow);
+  }
+  h1 .cursor {
+    display: inline-block;
+    width: 0.5em;
+    height: 0.95em;
+    background: var(--green);
+    margin-left: 4px;
+    vertical-align: middle;
+    box-shadow: 0 0 16px var(--green);
+    animation: blink 1s step-end infinite;
+  }
+  @keyframes blink {
+    50% { opacity: 0; }
+  }
+  h1 .com { color: var(--muted); font-weight: 400; }
+
+  .hero-sub {
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 16px;
+    color: var(--text-2);
+    line-height: 1.6;
+    max-width: 540px;
+    margin-bottom: 36px;
+  }
+  .hero-sub .green { color: var(--green); }
+  .hero-sub .red { color: var(--red); }
+  .hero-sub .com { color: var(--muted); }
+  .hero-sub .quote { color: var(--white); }
+
+  .install-row {
+    display: flex;
+    gap: 12px;
+    align-items: center;
+    margin-bottom: 36px;
+    flex-wrap: wrap;
+  }
+  .install {
+    background: var(--bg-2);
+    border: 1px solid var(--line-2);
+    padding: 14px 20px;
+    color: var(--white);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+  }
+  .install .prompt { color: var(--green); }
+  .install .cmd { color: var(--white); }
+  .install .copy {
+    background: var(--bg-3);
+    border: 1px solid var(--line-2);
+    color: var(--text-2);
+    padding: 4px 8px;
+    font-size: 11px;
+    cursor: pointer;
+    margin-left: 8px;
+    font-family: inherit;
+  }
+  .install .copy:hover {
+    color: var(--green);
+    border-color: var(--green);
+  }
+  .alt-link {
+    color: var(--text-2);
+    font-size: 13px;
+    text-decoration: none;
+    border-bottom: 1px dashed var(--muted);
+  }
+  .alt-link:hover { color: var(--green); border-bottom-color: var(--green); }
+
+  .stats-strip {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    border: 1px solid var(--line);
+    background: var(--bg-2);
+  }
+  .stat {
+    padding: 16px;
+    border-right: 1px solid var(--line);
+  }
+  .stat:last-child { border-right: none; }
+  .stat .label {
+    font-size: 10px;
+    color: var(--muted);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 6px;
+  }
+  .stat .value {
+    font-size: 22px;
+    color: var(--white);
+    font-weight: 700;
+    letter-spacing: -0.01em;
+  }
+  .stat .value .accent {
+    color: var(--green);
+    font-size: 14px;
+    margin-left: 4px;
+  }
+
+  /* TERMINAL */
+  .term-stage {
+    position: relative;
+  }
+  .terminal {
+    background: var(--bg-2);
+    border: 1px solid var(--line-2);
+    box-shadow:
+      0 30px 80px rgba(0,0,0,0.6),
+      0 0 60px rgba(74, 222, 128, 0.08),
+      inset 0 0 0 1px rgba(74, 222, 128, 0.05);
+    border-radius: 6px;
+    overflow: hidden;
+    position: relative;
+  }
+  .term-bar {
+    background: var(--bg);
+    padding: 10px 14px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border-bottom: 1px solid var(--line);
+  }
+  .term-bar .dots {
+    display: flex;
+    gap: 6px;
+  }
+  .term-bar .dot {
+    width: 10px; height: 10px;
+    border-radius: 50%;
+    background: var(--line-2);
+  }
+  .term-bar .dot.r { background: var(--red); }
+  .term-bar .dot.a { background: var(--amber); }
+  .term-bar .dot.g { background: var(--green); }
+  .term-bar .title {
+    flex: 1;
+    text-align: center;
+    font-size: 11px;
+    color: var(--muted);
+  }
+  .term-bar .title .green { color: var(--green); }
+  .term-bar .badge {
+    font-size: 10px;
+    color: var(--text-2);
+    padding: 2px 8px;
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+  }
+  .term-body {
+    padding: 18px 20px 22px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 13px;
+    line-height: 1.7;
+    min-height: 460px;
+  }
+  .ln { display: block; }
+  .prompt-line { color: var(--text); }
+  .prompt-line .user { color: var(--cyan); }
+  .prompt-line .at { color: var(--muted); }
+  .prompt-line .host { color: var(--amber); }
+  .prompt-line .path { color: var(--text-2); }
+  .prompt-line .arrow { color: var(--green); margin: 0 6px; }
+  .cmd { color: var(--white); }
+  .arg { color: var(--text-2); }
+  .flag { color: var(--cyan); }
+  .str { color: var(--amber); }
+  .out { color: var(--text-2); }
+  .ok { color: var(--green); }
+  .warn { color: var(--amber); }
+  .err { color: var(--red); }
+  .com { color: var(--muted); }
+
+  .table-row {
+    display: grid;
+    grid-template-columns: 80px 1fr 90px 60px;
+    gap: 12px;
+    color: var(--text-2);
+    font-size: 12.5px;
+  }
+  .table-row.head {
+    color: var(--muted);
+    border-bottom: 1px dashed var(--line-2);
+    padding-bottom: 4px;
+    margin-bottom: 4px;
+  }
+  .table-row .sev.high { color: var(--red); }
+  .table-row .sev.med { color: var(--amber); }
+  .table-row .sev.low { color: var(--cyan); }
+
+  .progress-line {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    color: var(--text-2);
+    font-size: 12.5px;
+  }
+  .progress-bar {
+    flex: 1;
+    height: 6px;
+    background: var(--bg-3);
+    border: 1px solid var(--line);
+    position: relative;
+    overflow: hidden;
+  }
+  .progress-bar .fill {
+    position: absolute;
+    top: 0; left: 0;
+    height: 100%;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+  }
+  .progress-bar .fill.amber { background: var(--amber); box-shadow: 0 0 8px var(--amber); }
+
+  .term-cursor {
+    display: inline-block;
+    width: 8px;
+    height: 14px;
+    background: var(--green);
+    box-shadow: 0 0 8px var(--green);
+    vertical-align: middle;
+    margin-left: 2px;
+    animation: blink 1s step-end infinite;
+  }
+
+  /* glow card under terminal */
+  .term-stage::before {
+    content: '';
+    position: absolute;
+    inset: -40px;
+    background: radial-gradient(circle, rgba(74, 222, 128, 0.15) 0%, transparent 60%);
+    z-index: -1;
+    filter: blur(40px);
+  }
+
+  /* hovering tags */
+  .tag-tl, .tag-br {
+    position: absolute;
+    background: var(--bg);
+    border: 1px solid var(--green);
+    padding: 6px 10px;
+    font-size: 10px;
+    color: var(--green);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    box-shadow: 0 0 16px var(--green-glow);
+    z-index: 3;
+  }
+  .tag-tl { top: -14px; left: 24px; }
+  .tag-br { bottom: -14px; right: 24px; }
+
+  /* BOTTOM LOG STRIP */
+  .log-strip {
+    background: var(--bg-2);
+    border-top: 1px solid var(--line);
+    border-bottom: 1px solid var(--line);
+    overflow: hidden;
+  }
+  .log-track {
+    display: flex;
+    gap: 32px;
+    padding: 10px 0;
+    animation: scroll 40s linear infinite;
+    white-space: nowrap;
+    font-size: 12px;
+    color: var(--text-2);
+  }
+  .log-track .ts { color: var(--muted); margin-right: 6px; }
+  .log-track .lvl { color: var(--green); margin-right: 6px; font-weight: 700; }
+  .log-track .lvl.warn { color: var(--amber); }
+  .log-track .lvl.err { color: var(--red); }
+  .log-track .sep { color: var(--muted); }
+  @keyframes scroll {
+    from { transform: translateX(0); }
+    to { transform: translateX(-50%); }
+  }
+
+  @media (max-width: 1100px) {
+    .hero { grid-template-columns: 1fr; gap: 60px; }
+    .nav-links { display: none; }
+    .stats-strip { grid-template-columns: 1fr 1fr; }
+    .stat:nth-child(2) { border-right: none; }
+    .stat { border-bottom: 1px solid var(--line); }
+  }
+  @media (max-width: 600px) {
+    .term-body { font-size: 11.5px; padding: 14px; }
+    .table-row { grid-template-columns: 60px 1fr 70px; }
+    .table-row .pkg { display: none; }
+    nav { padding: 12px 16px; }
+    .hero { padding: 40px 16px; }
+    .install-row { flex-direction: column; align-items: stretch; }
+  }
+</style>
+</head>
+<body>
+
+<div class="statusbar">
+  <div class="left">
+    <span class="pulse"></span>
+    <span>SYSTEM ONLINE · 127 nodes · 0 incidents (90d)</span>
+  </div>
+  <div class="right">
+    <span>v4.12.0-stable</span>
+    <span>uptime 412d 14h</span>
+    <span>SOC 2 ✓</span>
+  </div>
+</div>
+
+<nav>
+  <a href="#" class="brand">
+    <div class="brand-mark"></div>
+    <div>
+      <span class="brand-name">NEXUS<span class="slash">//</span>OS<span class="ver">v4.12</span></span>
+    </div>
+  </a>
+  <div class="nav-links">
+    <a href="#">platform</a>
+    <a href="#">scanners</a>
+    <a href="#">runtime</a>
+    <a href="#">docs</a>
+    <a href="#">changelog</a>
+  </div>
+  <div class="nav-actions">
+    <a href="#" class="nav-action">$ login</a>
+    <a href="#" class="nav-cta">Get Shell →</a>
+  </div>
+</nav>
+
+<section class="hero">
+  <div class="hero-content">
+    <pre class="ascii-tag">┌─ NEXUS//OS ───────────────────┐
+│  the shell for the people     │
+│  who break things on purpose  │
+└───────────────────────────────┘</pre>
+
+    <div class="badge-row">
+      <span class="pill"><span class="dot"></span>OPEN SOURCE · MIT</span>
+      <span class="pill"><span class="dot"></span>26.4k <span class="v">★</span> on GitHub</span>
+      <span class="pill"><span class="dot amber"></span>v4.12 — 2 days ago</span>
+    </div>
+
+    <h1>
+      Audit any stack<br>
+      in one <span class="green">command</span>.<br>
+      <span class="com">// stop pretending<br>// you read all the CVEs.</span><span class="cursor"></span>
+    </h1>
+
+    <p class="hero-sub">
+      <span class="com"># A unified scanner for cloud, code, and containers.</span><br>
+      Nexus pipes <span class="green">SBOM, IaC, secrets, runtime,</span> and <span class="green">supply-chain</span> findings into one console.<br>
+      Triage what's <span class="red">actually exploitable</span>. Ignore the <span class="quote">"high"</span> that isn't.
+    </p>
+
+    <div class="install-row">
+      <div class="install">
+        <span class="prompt">$</span>
+        <span class="cmd">curl -sSL nexus.sh/install | sh</span>
+        <button class="copy">[ copy ]</button>
+      </div>
+      <a href="#" class="alt-link">$ brew install nexus →</a>
+    </div>
+
+    <div class="stats-strip">
+      <div class="stat">
+        <div class="label">// scans / day</div>
+        <div class="value">2.4M<span class="accent">↑</span></div>
+      </div>
+      <div class="stat">
+        <div class="label">// CVE database</div>
+        <div class="value">412k<span class="accent">+</span></div>
+      </div>
+      <div class="stat">
+        <div class="label">// false positives</div>
+        <div class="value">0.4%<span class="accent">↓</span></div>
+      </div>
+      <div class="stat">
+        <div class="label">// p99 latency</div>
+        <div class="value">88ms</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="term-stage">
+    <div class="tag-tl">● LIVE OUTPUT</div>
+    <div class="tag-br">EXIT 0 · 1.4s</div>
+
+    <div class="terminal">
+      <div class="term-bar">
+        <div class="dots">
+          <span class="dot r"></span>
+          <span class="dot a"></span>
+          <span class="dot g"></span>
+        </div>
+        <div class="title">root@nexus: <span class="green">~/audit</span> — zsh — 100×32</div>
+        <div class="badge">SSH · prod-east-1</div>
+      </div>
+      <div class="term-body">
+        <div class="ln prompt-line">
+          <span class="user">root</span><span class="at">@</span><span class="host">nexus</span><span class="path">:~/audit</span><span class="arrow">❯</span>
+          <span class="cmd">nx</span> <span class="arg">scan</span> <span class="flag">--target</span> <span class="str">./repo</span> <span class="flag">--depth</span> <span class="str">full</span>
+        </div>
+
+        <div class="ln out"><span class="com">[</span><span class="ok">✓</span><span class="com">]</span> Booting Nexus runtime · <span class="ok">v4.12.0</span></div>
+        <div class="ln out"><span class="com">[</span><span class="ok">✓</span><span class="com">]</span> Loaded 412,408 CVEs from registry</div>
+        <div class="ln out"><span class="com">[</span><span class="ok">✓</span><span class="com">]</span> Resolved 1,284 packages across 14 ecosystems</div>
+        <div class="ln progress-line" style="margin: 6px 0;">
+          <span>Scanning</span>
+          <div class="progress-bar"><div class="fill" style="width: 100%;"></div></div>
+          <span class="ok">100%</span>
+        </div>
+        <div class="ln out"><span class="com">[</span><span class="ok">✓</span><span class="com">]</span> Scan complete in <span class="ok">1.42s</span> · 412 files · 88ms p99</div>
+        <div class="ln" style="margin-top: 14px;">&nbsp;</div>
+
+        <div class="ln out" style="margin-bottom: 6px;"><span class="warn">▸</span> Findings — <span class="err">2 critical</span> · <span class="warn">5 medium</span> · <span class="cyan">12 low</span></div>
+
+        <div class="ln table-row head">
+          <span>SEV</span><span>FINDING</span><span class="pkg">PACKAGE</span><span>FIX</span>
+        </div>
+        <div class="ln table-row">
+          <span class="sev high">CRIT</span>
+          <span>CVE-2026-1402 <span class="com">// rce in handler</span></span>
+          <span class="pkg out">@nx/server</span>
+          <span class="ok">→ 2.4.1</span>
+        </div>
+        <div class="ln table-row">
+          <span class="sev high">CRIT</span>
+          <span>secret leak <span class="com">// AWS_ACCESS_KEY in .env.bak</span></span>
+          <span class="pkg out">—</span>
+          <span class="ok">→ rotate</span>
+        </div>
+        <div class="ln table-row">
+          <span class="sev med">MED</span>
+          <span>weak rng <span class="com">// Math.random in token gen</span></span>
+          <span class="pkg out">crypto/utils</span>
+          <span class="warn">→ patch</span>
+        </div>
+        <div class="ln table-row">
+          <span class="sev med">MED</span>
+          <span>open S3 bucket <span class="com">// public-read</span></span>
+          <span class="pkg out">infra/s3</span>
+          <span class="ok">→ acl</span>
+        </div>
+        <div class="ln table-row">
+          <span class="sev low">LOW</span>
+          <span>outdated dep <span class="com">// no known CVE</span></span>
+          <span class="pkg out">lodash</span>
+          <span class="cyan">→ optional</span>
+        </div>
+
+        <div class="ln" style="margin-top: 14px;">&nbsp;</div>
+        <div class="ln out"><span class="com">[</span><span class="ok">✓</span><span class="com">]</span> Reachability analysis: <span class="err">2 of 19 are exploitable</span></div>
+        <div class="ln out"><span class="com">[</span><span class="ok">✓</span><span class="com">]</span> Auto-PR opened: <span class="cyan">github.com/acme/api/pull/4821</span></div>
+
+        <div class="ln" style="margin-top: 16px;">
+          <span class="user">root</span><span class="at">@</span><span class="host">nexus</span><span class="path">:~/audit</span><span class="arrow">❯</span>
+          <span class="term-cursor"></span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="log-strip">
+  <div class="log-track">
+    <span><span class="ts">[12:48:02]</span><span class="lvl">INFO</span>scan started · target=acme/api</span><span class="sep">●</span>
+    <span><span class="ts">[12:48:02]</span><span class="lvl warn">WARN</span>secret detected in commit ad84f12</span><span class="sep">●</span>
+    <span><span class="ts">[12:48:03]</span><span class="lvl err">CRIT</span>CVE-2026-1402 reachable via /upload</span><span class="sep">●</span>
+    <span><span class="ts">[12:48:04]</span><span class="lvl">INFO</span>auto-pr opened #4821</span><span class="sep">●</span>
+    <span><span class="ts">[12:48:05]</span><span class="lvl">INFO</span>SBOM signed · attestation pushed to OCI</span><span class="sep">●</span>
+    <span><span class="ts">[12:48:06]</span><span class="lvl">INFO</span>runtime hooks active on 412 nodes</span><span class="sep">●</span>
+    <span><span class="ts">[12:48:07]</span><span class="lvl">INFO</span>scan started · target=acme/api</span><span class="sep">●</span>
+    <span><span class="ts">[12:48:08]</span><span class="lvl warn">WARN</span>secret detected in commit ad84f12</span><span class="sep">●</span>
+    <span><span class="ts">[12:48:09]</span><span class="lvl err">CRIT</span>CVE-2026-1402 reachable via /upload</span><span class="sep">●</span>
+    <span><span class="ts">[12:48:10]</span><span class="lvl">INFO</span>auto-pr opened #4821</span><span class="sep">●</span>
+  </div>
+</div>
+
+</body>
+</html>

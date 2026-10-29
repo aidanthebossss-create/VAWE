@@ -1,28 +1,15 @@
 'use client';
 
-import { motion, useScroll, useTransform } from 'framer-motion';
-import { useRef } from 'react';
-
 export default function WaveDivider({
   flip = false,
-  fromColor = '#f8fafb',
   toColor = '#18181b',
 }: {
   flip?: boolean;
   fromColor?: string;
   toColor?: string;
 }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: ref,
-    offset: ['start end', 'end start'],
-  });
-
-  const morphProgress = useTransform(scrollYProgress, [0, 0.5, 1], [0, 1, 0]);
-
   return (
     <div
-      ref={ref}
       className={`relative w-full overflow-hidden pointer-events-none ${flip ? 'rotate-180' : ''}`}
       style={{ marginTop: '-1px', marginBottom: '-1px' }}
     >

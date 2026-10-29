@@ -1,0 +1,1374 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Vexel AI — The reasoning layer for production agents</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<style>
+  :root {
+    --bg-0: #050510;
+    --bg-1: #0a0a18;
+    --bg-2: #11112a;
+    --bg-3: #16163a;
+    --panel: rgba(20, 20, 48, 0.55);
+    --panel-2: rgba(28, 28, 64, 0.55);
+    --line: rgba(139, 92, 246, 0.18);
+    --line-2: rgba(139, 92, 246, 0.32);
+    --line-soft: rgba(255, 255, 255, 0.06);
+    --text: #f0f0ff;
+    --text-2: #c4c4e2;
+    --muted: #7c7ca0;
+    --muted-2: #5a5a7a;
+    --violet: #8b5cf6;
+    --violet-2: #a78bfa;
+    --violet-glow: rgba(139, 92, 246, 0.4);
+    --cyan: #06d4f7;
+    --cyan-2: #22e5ff;
+    --cyan-glow: rgba(6, 212, 247, 0.35);
+    --pink: #f0abfc;
+    --green: #4ade80;
+    --gradient-1: linear-gradient(135deg, #8b5cf6 0%, #06d4f7 100%);
+    --gradient-2: linear-gradient(135deg, #a78bfa 0%, #f0abfc 50%, #22e5ff 100%);
+    --gradient-soft: linear-gradient(135deg, rgba(139,92,246,0.15) 0%, rgba(6,212,247,0.15) 100%);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: 'Inter', sans-serif;
+    background: var(--bg-0);
+    color: var(--text);
+    line-height: 1.6;
+    overflow-x: hidden;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* Background fx */
+  .bg-fx {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    overflow: hidden;
+  }
+  .bg-fx::before, .bg-fx::after {
+    content: '';
+    position: absolute;
+    width: 800px;
+    height: 800px;
+    border-radius: 50%;
+    filter: blur(120px);
+    opacity: 0.4;
+  }
+  .bg-fx::before {
+    background: radial-gradient(circle, var(--violet) 0%, transparent 70%);
+    top: -200px;
+    left: -200px;
+    animation: float1 24s ease-in-out infinite;
+  }
+  .bg-fx::after {
+    background: radial-gradient(circle, var(--cyan) 0%, transparent 70%);
+    top: 40%;
+    right: -200px;
+    animation: float2 28s ease-in-out infinite;
+  }
+  @keyframes float1 {
+    0%, 100% { transform: translate(0,0) scale(1); }
+    50% { transform: translate(200px, 100px) scale(1.15); }
+  }
+  @keyframes float2 {
+    0%, 100% { transform: translate(0,0) scale(1); }
+    50% { transform: translate(-150px, -120px) scale(1.1); }
+  }
+  .grid-bg {
+    position: fixed;
+    inset: 0;
+    z-index: -1;
+    background-image:
+      linear-gradient(rgba(139, 92, 246, 0.06) 1px, transparent 1px),
+      linear-gradient(90deg, rgba(139, 92, 246, 0.06) 1px, transparent 1px);
+    background-size: 64px 64px;
+    mask-image: radial-gradient(ellipse at center, black 0%, transparent 80%);
+  }
+
+  .container {
+    max-width: 1280px;
+    margin: 0 auto;
+    padding: 0 32px;
+  }
+
+  /* --- NAV --- */
+  nav {
+    position: fixed;
+    top: 16px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 100;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px 10px 22px;
+    background: rgba(10, 10, 24, 0.6);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--line);
+    border-radius: 999px;
+    box-shadow: 0 8px 40px rgba(0,0,0,0.4), inset 0 1px 0 rgba(255,255,255,0.06);
+  }
+  .logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+    font-size: 17px;
+    letter-spacing: -0.02em;
+    margin-right: 24px;
+  }
+  .logo-mark {
+    width: 26px;
+    height: 26px;
+    border-radius: 7px;
+    background: var(--gradient-1);
+    position: relative;
+    box-shadow: 0 0 20px var(--violet-glow);
+  }
+  .logo-mark::before {
+    content: '';
+    position: absolute;
+    inset: 5px;
+    border-radius: 3px;
+    background: var(--bg-0);
+  }
+  .logo-mark::after {
+    content: '';
+    position: absolute;
+    inset: 9px;
+    border-radius: 1px;
+    background: var(--gradient-1);
+  }
+  .nav-links {
+    display: flex;
+    gap: 6px;
+  }
+  .nav-links a {
+    color: var(--text-2);
+    text-decoration: none;
+    font-size: 14px;
+    padding: 8px 14px;
+    border-radius: 8px;
+    transition: all 0.2s;
+  }
+  .nav-links a:hover {
+    color: var(--text);
+    background: rgba(139, 92, 246, 0.1);
+  }
+  .nav-actions {
+    display: flex;
+    gap: 8px;
+    margin-left: 12px;
+  }
+  .btn {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 18px;
+    border-radius: 999px;
+    font-size: 14px;
+    font-weight: 500;
+    text-decoration: none;
+    cursor: pointer;
+    border: none;
+    font-family: 'Inter', sans-serif;
+    transition: all 0.2s;
+    white-space: nowrap;
+  }
+  .btn-ghost {
+    color: var(--text-2);
+    background: transparent;
+  }
+  .btn-ghost:hover {
+    color: var(--text);
+    background: rgba(255,255,255,0.05);
+  }
+  .btn-primary {
+    background: var(--gradient-1);
+    color: white;
+    box-shadow: 0 4px 24px var(--violet-glow);
+  }
+  .btn-primary:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 8px 32px var(--violet-glow);
+  }
+
+  /* --- HERO --- */
+  .hero {
+    padding: 180px 0 100px;
+    text-align: center;
+    position: relative;
+  }
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    padding: 6px 6px 6px 14px;
+    background: rgba(139, 92, 246, 0.08);
+    border: 1px solid var(--line-2);
+    border-radius: 999px;
+    font-size: 13px;
+    color: var(--text-2);
+    margin-bottom: 36px;
+  }
+  .badge .pill {
+    background: var(--gradient-1);
+    color: white;
+    padding: 3px 10px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+  }
+  .hero h1 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: clamp(48px, 7.5vw, 96px);
+    font-weight: 600;
+    line-height: 1.02;
+    letter-spacing: -0.04em;
+    margin-bottom: 28px;
+    background: linear-gradient(180deg, #ffffff 0%, #c4c4e2 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .hero h1 .grad {
+    background: var(--gradient-2);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .hero-sub {
+    font-size: 21px;
+    color: var(--text-2);
+    max-width: 680px;
+    margin: 0 auto 48px;
+    line-height: 1.5;
+    font-weight: 400;
+  }
+  .hero-cta {
+    display: flex;
+    gap: 12px;
+    justify-content: center;
+    margin-bottom: 80px;
+    flex-wrap: wrap;
+  }
+  .btn-lg { padding: 14px 26px; font-size: 15px; }
+  .btn-secondary {
+    background: rgba(255,255,255,0.05);
+    color: var(--text);
+    border: 1px solid var(--line);
+    backdrop-filter: blur(20px);
+  }
+  .btn-secondary:hover {
+    background: rgba(255,255,255,0.08);
+    border-color: var(--line-2);
+  }
+
+  /* Code preview / dashboard mockup */
+  .hero-mock {
+    margin: 0 auto;
+    max-width: 1100px;
+    background: rgba(10, 10, 24, 0.65);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 6px;
+    backdrop-filter: blur(30px);
+    box-shadow:
+      0 0 0 1px rgba(255,255,255,0.04) inset,
+      0 50px 100px -30px rgba(139, 92, 246, 0.4),
+      0 30px 60px -20px rgba(6, 212, 247, 0.2);
+    position: relative;
+  }
+  .hero-mock::before {
+    content: '';
+    position: absolute;
+    inset: -2px;
+    border-radius: 20px;
+    padding: 2px;
+    background: var(--gradient-1);
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+    -webkit-mask-composite: xor;
+    mask-composite: exclude;
+    opacity: 0.3;
+    pointer-events: none;
+  }
+  .mock-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--line-soft);
+  }
+  .mock-bar .dots { display: flex; gap: 6px; }
+  .mock-bar .dot {
+    width: 11px; height: 11px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.15);
+  }
+  .mock-bar .url {
+    flex: 1;
+    text-align: center;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    color: var(--muted);
+  }
+  .mock-grid {
+    display: grid;
+    grid-template-columns: 220px 1fr 280px;
+    min-height: 460px;
+  }
+  .mock-side {
+    border-right: 1px solid var(--line-soft);
+    padding: 18px 14px;
+  }
+  .mock-side h5 {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    margin: 16px 0 10px;
+    font-weight: 500;
+  }
+  .mock-side h5:first-child { margin-top: 0; }
+  .mock-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    font-size: 13px;
+    color: var(--text-2);
+    cursor: pointer;
+    transition: background 0.15s;
+  }
+  .mock-item:hover { background: rgba(139, 92, 246, 0.08); }
+  .mock-item.active {
+    background: rgba(139, 92, 246, 0.15);
+    color: var(--text);
+  }
+  .mock-item .ico {
+    width: 14px; height: 14px;
+    border-radius: 4px;
+    background: var(--gradient-1);
+    flex-shrink: 0;
+    opacity: 0.8;
+  }
+  .mock-main {
+    padding: 24px;
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+  }
+  .mock-stats {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+  }
+  .mock-stat {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--line-soft);
+    border-radius: 10px;
+    padding: 14px;
+  }
+  .mock-stat .label {
+    font-size: 11px;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: var(--muted);
+  }
+  .mock-stat .value {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 24px;
+    font-weight: 600;
+    margin-top: 6px;
+  }
+  .mock-stat .delta {
+    font-size: 11px;
+    color: var(--green);
+    margin-top: 4px;
+  }
+  .mock-stat .delta.bad { color: var(--pink); }
+  .mock-chart {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--line-soft);
+    border-radius: 10px;
+    padding: 16px;
+    flex: 1;
+    min-height: 180px;
+    position: relative;
+    overflow: hidden;
+  }
+  .mock-chart h6 {
+    font-size: 12px;
+    color: var(--muted);
+    margin-bottom: 12px;
+    font-weight: 500;
+  }
+  .mock-chart svg {
+    width: 100%;
+    height: 140px;
+  }
+  .mock-right {
+    border-left: 1px solid var(--line-soft);
+    padding: 18px 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+  .mock-right h5 {
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: 0.12em;
+    color: var(--muted);
+    margin-bottom: 4px;
+  }
+  .mock-event {
+    background: rgba(255,255,255,0.03);
+    border: 1px solid var(--line-soft);
+    border-radius: 8px;
+    padding: 10px 12px;
+    font-size: 12px;
+  }
+  .mock-event .top {
+    display: flex;
+    justify-content: space-between;
+    margin-bottom: 4px;
+  }
+  .mock-event .name { color: var(--text); font-weight: 500; }
+  .mock-event .time { color: var(--muted); font-family: 'JetBrains Mono', monospace; font-size: 11px; }
+  .mock-event .desc { color: var(--text-2); font-size: 11px; }
+  .mock-event .tag {
+    display: inline-block;
+    margin-top: 6px;
+    padding: 2px 8px;
+    background: rgba(74, 222, 128, 0.12);
+    border: 1px solid rgba(74, 222, 128, 0.25);
+    color: var(--green);
+    border-radius: 4px;
+    font-size: 10px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+  .mock-event .tag.warn {
+    background: rgba(240, 171, 252, 0.12);
+    border-color: rgba(240, 171, 252, 0.25);
+    color: var(--pink);
+  }
+
+  /* --- Logo strip --- */
+  .logos {
+    padding: 100px 0 80px;
+    text-align: center;
+  }
+  .logos .label {
+    font-size: 13px;
+    color: var(--muted);
+    margin-bottom: 36px;
+    text-transform: uppercase;
+    letter-spacing: 0.16em;
+  }
+  .logos-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 32px;
+    align-items: center;
+    opacity: 0.6;
+  }
+  .logo-pill {
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 600;
+    font-size: 18px;
+    color: var(--text-2);
+    text-align: center;
+    letter-spacing: -0.01em;
+  }
+
+  /* --- FEATURES --- */
+  .features {
+    padding: 100px 0;
+  }
+  .section-head {
+    text-align: center;
+    max-width: 720px;
+    margin: 0 auto 80px;
+  }
+  .section-eyebrow {
+    display: inline-block;
+    padding: 6px 14px;
+    background: rgba(139, 92, 246, 0.1);
+    border: 1px solid var(--line-2);
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    color: var(--violet-2);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    margin-bottom: 20px;
+  }
+  .section-head h2 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: clamp(36px, 5vw, 56px);
+    font-weight: 600;
+    line-height: 1.05;
+    letter-spacing: -0.03em;
+    margin-bottom: 18px;
+  }
+  .section-head h2 .grad {
+    background: var(--gradient-2);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+  }
+  .section-head p {
+    font-size: 18px;
+    color: var(--text-2);
+    line-height: 1.6;
+  }
+  .feature-grid {
+    display: grid;
+    grid-template-columns: 1.4fr 1fr 1fr;
+    grid-template-rows: auto auto;
+    gap: 16px;
+  }
+  .feature {
+    background: var(--panel);
+    backdrop-filter: blur(20px);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    padding: 28px;
+    position: relative;
+    overflow: hidden;
+    transition: border-color 0.2s, transform 0.2s;
+  }
+  .feature:hover {
+    border-color: var(--line-2);
+    transform: translateY(-3px);
+  }
+  .feature.span2 { grid-column: span 2; }
+  .feature .ico {
+    width: 40px; height: 40px;
+    border-radius: 10px;
+    background: var(--gradient-soft);
+    border: 1px solid var(--line-2);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    margin-bottom: 18px;
+    color: var(--violet-2);
+    font-family: 'Space Grotesk', sans-serif;
+    font-weight: 700;
+  }
+  .feature h3 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 22px;
+    font-weight: 600;
+    margin-bottom: 10px;
+    letter-spacing: -0.02em;
+  }
+  .feature p {
+    color: var(--text-2);
+    font-size: 14.5px;
+    line-height: 1.6;
+  }
+  .feature.featured {
+    background:
+      radial-gradient(circle at 100% 0%, rgba(139, 92, 246, 0.18) 0%, transparent 50%),
+      radial-gradient(circle at 0% 100%, rgba(6, 212, 247, 0.15) 0%, transparent 50%),
+      var(--panel);
+  }
+  .feature-visual {
+    margin-top: 24px;
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--line-soft);
+    border-radius: 10px;
+    padding: 14px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12.5px;
+    line-height: 1.6;
+    color: var(--text-2);
+  }
+  .code-line { display: block; }
+  .code-comment { color: var(--muted); }
+  .code-keyword { color: var(--violet-2); }
+  .code-string { color: var(--cyan-2); }
+  .code-fn { color: var(--pink); }
+
+  .feature-mini-bars {
+    margin-top: 20px;
+    display: flex;
+    align-items: end;
+    gap: 6px;
+    height: 80px;
+  }
+  .feature-mini-bars .bar {
+    flex: 1;
+    background: var(--gradient-1);
+    border-radius: 4px 4px 0 0;
+    opacity: 0.8;
+  }
+
+  /* --- INTEGRATION SHOWCASE --- */
+  .showcase {
+    padding: 100px 0;
+  }
+  .showcase-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 24px;
+    padding: 60px;
+    backdrop-filter: blur(20px);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 60px;
+    align-items: center;
+    position: relative;
+    overflow: hidden;
+  }
+  .showcase-card::before {
+    content: '';
+    position: absolute;
+    width: 600px; height: 600px;
+    border-radius: 50%;
+    background: radial-gradient(circle, var(--violet-glow) 0%, transparent 70%);
+    top: -200px; right: -200px;
+    pointer-events: none;
+  }
+  .showcase-content {
+    position: relative;
+    z-index: 1;
+  }
+  .showcase-content h3 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 42px;
+    font-weight: 600;
+    line-height: 1.1;
+    letter-spacing: -0.02em;
+    margin-bottom: 18px;
+  }
+  .showcase-content p {
+    font-size: 17px;
+    color: var(--text-2);
+    margin-bottom: 28px;
+    line-height: 1.6;
+  }
+  .showcase-list {
+    list-style: none;
+    margin-bottom: 32px;
+  }
+  .showcase-list li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 8px 0;
+    font-size: 15px;
+    color: var(--text-2);
+  }
+  .showcase-list li::before {
+    content: '';
+    width: 18px; height: 18px;
+    border-radius: 50%;
+    background: var(--gradient-1);
+    flex-shrink: 0;
+    box-shadow: 0 0 0 4px rgba(139, 92, 246, 0.15);
+    position: relative;
+  }
+  .showcase-graph {
+    background: rgba(0,0,0,0.4);
+    border: 1px solid var(--line);
+    border-radius: 16px;
+    padding: 28px;
+    position: relative;
+    z-index: 1;
+    backdrop-filter: blur(10px);
+  }
+  .nodes-svg {
+    width: 100%;
+    height: 360px;
+  }
+
+  /* --- STATS --- */
+  .stats {
+    padding: 80px 0 100px;
+  }
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 24px;
+    text-align: center;
+  }
+  .stat-big {
+    padding: 40px 20px;
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 18px;
+    backdrop-filter: blur(20px);
+  }
+  .stat-big .num {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 64px;
+    font-weight: 600;
+    line-height: 1;
+    background: var(--gradient-2);
+    -webkit-background-clip: text;
+    background-clip: text;
+    color: transparent;
+    letter-spacing: -0.04em;
+    margin-bottom: 12px;
+  }
+  .stat-big .label {
+    font-size: 14px;
+    color: var(--text-2);
+    line-height: 1.4;
+  }
+
+  /* --- PRICING --- */
+  .pricing { padding: 100px 0; }
+  .price-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 20px;
+  }
+  .price-card {
+    background: var(--panel);
+    border: 1px solid var(--line);
+    border-radius: 20px;
+    padding: 36px 32px;
+    backdrop-filter: blur(20px);
+    position: relative;
+  }
+  .price-card.featured {
+    border-color: transparent;
+    background:
+      linear-gradient(rgba(20,20,48,0.85), rgba(20,20,48,0.85)) padding-box,
+      var(--gradient-1) border-box;
+    border: 1px solid transparent;
+    transform: scale(1.04);
+    box-shadow: 0 30px 60px -20px var(--violet-glow);
+  }
+  .price-tag {
+    position: absolute;
+    top: 24px; right: 24px;
+    background: var(--gradient-1);
+    color: white;
+    font-size: 11px;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    padding: 4px 10px;
+    border-radius: 999px;
+  }
+  .price-card h3 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 18px;
+    font-weight: 600;
+    color: var(--text-2);
+    margin-bottom: 8px;
+  }
+  .price {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 56px;
+    font-weight: 600;
+    letter-spacing: -0.04em;
+    line-height: 1;
+    margin: 16px 0 4px;
+  }
+  .price span {
+    font-size: 16px;
+    color: var(--muted);
+    font-weight: 400;
+  }
+  .price-desc {
+    color: var(--text-2);
+    font-size: 14px;
+    margin-bottom: 28px;
+    padding-bottom: 28px;
+    border-bottom: 1px solid var(--line-soft);
+    line-height: 1.5;
+  }
+  .price-features {
+    list-style: none;
+    margin-bottom: 32px;
+  }
+  .price-features li {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    padding: 8px 0;
+    font-size: 14.5px;
+    color: var(--text-2);
+  }
+  .price-features li::before {
+    content: '✓';
+    color: var(--cyan-2);
+    font-weight: 700;
+    margin-top: 1px;
+  }
+  .price-card .btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  /* --- CTA --- */
+  .cta {
+    padding: 120px 0;
+    text-align: center;
+    position: relative;
+  }
+  .cta-card {
+    background:
+      radial-gradient(circle at 30% 30%, rgba(139, 92, 246, 0.25) 0%, transparent 50%),
+      radial-gradient(circle at 70% 70%, rgba(6, 212, 247, 0.2) 0%, transparent 50%),
+      var(--panel);
+    border: 1px solid var(--line-2);
+    border-radius: 28px;
+    padding: 80px 40px;
+    backdrop-filter: blur(30px);
+    position: relative;
+    overflow: hidden;
+  }
+  .cta-card h2 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: clamp(40px, 6vw, 72px);
+    font-weight: 600;
+    line-height: 1;
+    letter-spacing: -0.04em;
+    margin-bottom: 24px;
+  }
+  .cta-card p {
+    font-size: 19px;
+    color: var(--text-2);
+    margin-bottom: 36px;
+    max-width: 540px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+  .cta-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 12px;
+    flex-wrap: wrap;
+  }
+
+  /* --- FOOTER --- */
+  footer {
+    padding: 80px 0 40px;
+    border-top: 1px solid var(--line);
+  }
+  .foot-grid {
+    display: grid;
+    grid-template-columns: 1.4fr repeat(4, 1fr);
+    gap: 40px;
+    padding-bottom: 60px;
+  }
+  .foot-brand p {
+    font-size: 14px;
+    color: var(--text-2);
+    margin: 16px 0;
+    max-width: 280px;
+  }
+  .foot-col h5 {
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px;
+    font-weight: 600;
+    margin-bottom: 18px;
+  }
+  .foot-col a {
+    display: block;
+    color: var(--text-2);
+    font-size: 14px;
+    text-decoration: none;
+    padding: 6px 0;
+    transition: color 0.2s;
+  }
+  .foot-col a:hover { color: var(--violet-2); }
+  .foot-bottom {
+    padding-top: 32px;
+    border-top: 1px solid var(--line-soft);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    color: var(--muted);
+    font-size: 13px;
+  }
+  .foot-bottom .badges { display: flex; gap: 12px; }
+  .foot-bottom .badges span {
+    padding: 4px 10px;
+    background: rgba(255,255,255,0.04);
+    border: 1px solid var(--line-soft);
+    border-radius: 6px;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 11px;
+  }
+
+  @media (max-width: 1024px) {
+    .feature-grid { grid-template-columns: 1fr 1fr; }
+    .feature.span2 { grid-column: span 2; }
+    .price-grid, .stats-grid { grid-template-columns: 1fr 1fr; }
+    .price-card.featured { transform: none; }
+    .showcase-card { grid-template-columns: 1fr; padding: 40px; }
+    .foot-grid { grid-template-columns: 1fr 1fr; }
+    .mock-grid { grid-template-columns: 1fr; }
+    .mock-side, .mock-right { display: none; }
+    .logos-grid { grid-template-columns: repeat(3, 1fr); }
+  }
+  @media (max-width: 600px) {
+    .nav-links { display: none; }
+    .feature-grid, .price-grid, .stats-grid { grid-template-columns: 1fr; }
+    .feature.span2 { grid-column: 1; }
+  }
+</style>
+</head>
+<body>
+
+<div class="bg-fx"></div>
+<div class="grid-bg"></div>
+
+<nav>
+  <div class="logo">
+    <div class="logo-mark"></div>
+    <span>Vexel</span>
+  </div>
+  <div class="nav-links">
+    <a href="#features">Platform</a>
+    <a href="#showcase">Agents</a>
+    <a href="#pricing">Pricing</a>
+    <a href="#">Docs</a>
+    <a href="#">Customers</a>
+  </div>
+  <div class="nav-actions">
+    <a href="#" class="btn btn-ghost">Sign in</a>
+    <a href="#" class="btn btn-primary">Start free →</a>
+  </div>
+</nav>
+
+<!-- HERO -->
+<section class="hero">
+  <div class="container">
+    <div class="badge">
+      <span class="pill">New</span>
+      <span>Vexel Reasoner v3 — 4× faster, 38% cheaper</span>
+    </div>
+    <h1>The reasoning layer<br>for <span class="grad">production agents.</span></h1>
+    <p class="hero-sub">
+      Vexel turns brittle prompt chains into deterministic, observable agents. Plan,
+      execute, and evaluate at scale — with full traces and rollbacks for every step.
+    </p>
+    <div class="hero-cta">
+      <a href="#" class="btn btn-primary btn-lg">Start building free →</a>
+      <a href="#" class="btn btn-secondary btn-lg">Book a demo</a>
+    </div>
+
+    <!-- Dashboard mock -->
+    <div class="hero-mock">
+      <div class="mock-bar">
+        <div class="dots">
+          <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+        </div>
+        <div class="url">vexel.ai/console/agents/triage-bot/runs</div>
+      </div>
+      <div class="mock-grid">
+        <aside class="mock-side">
+          <h5>Workspace</h5>
+          <div class="mock-item"><div class="ico"></div>Overview</div>
+          <div class="mock-item active"><div class="ico"></div>Agents</div>
+          <div class="mock-item"><div class="ico"></div>Evaluations</div>
+          <div class="mock-item"><div class="ico"></div>Datasets</div>
+          <div class="mock-item"><div class="ico"></div>Tools</div>
+          <h5>Agents</h5>
+          <div class="mock-item active"><div class="ico"></div>triage-bot</div>
+          <div class="mock-item"><div class="ico"></div>refund-resolver</div>
+          <div class="mock-item"><div class="ico"></div>doc-summarizer</div>
+          <div class="mock-item"><div class="ico"></div>onboarding-flow</div>
+        </aside>
+        <main class="mock-main">
+          <div class="mock-stats">
+            <div class="mock-stat">
+              <div class="label">Runs · 24h</div>
+              <div class="value">128,402</div>
+              <div class="delta">↑ 12.4%</div>
+            </div>
+            <div class="mock-stat">
+              <div class="label">P50 latency</div>
+              <div class="value">412ms</div>
+              <div class="delta">↑ 8.1%</div>
+            </div>
+            <div class="mock-stat">
+              <div class="label">Eval pass rate</div>
+              <div class="value">98.7%</div>
+              <div class="delta bad">↓ 0.3%</div>
+            </div>
+          </div>
+          <div class="mock-chart">
+            <h6>Reasoning steps per run · last 24h</h6>
+            <svg viewBox="0 0 600 140" preserveAspectRatio="none">
+              <defs>
+                <linearGradient id="lg1" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#8b5cf6" stop-opacity="0.6"/>
+                  <stop offset="100%" stop-color="#8b5cf6" stop-opacity="0"/>
+                </linearGradient>
+                <linearGradient id="lg2" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#06d4f7" stop-opacity="0.5"/>
+                  <stop offset="100%" stop-color="#06d4f7" stop-opacity="0"/>
+                </linearGradient>
+              </defs>
+              <path d="M0,110 L40,90 L80,95 L120,70 L160,75 L200,45 L240,60 L280,30 L320,40 L360,20 L400,32 L440,18 L480,28 L520,12 L560,22 L600,8 L600,140 L0,140 Z" fill="url(#lg1)"/>
+              <path d="M0,110 L40,90 L80,95 L120,70 L160,75 L200,45 L240,60 L280,30 L320,40 L360,20 L400,32 L440,18 L480,28 L520,12 L560,22 L600,8" stroke="#a78bfa" stroke-width="2" fill="none"/>
+              <path d="M0,125 L40,118 L80,108 L120,112 L160,95 L200,98 L240,80 L280,85 L320,68 L360,72 L400,55 L440,60 L480,42 L520,48 L560,32 L600,38 L600,140 L0,140 Z" fill="url(#lg2)"/>
+              <path d="M0,125 L40,118 L80,108 L120,112 L160,95 L200,98 L240,80 L280,85 L320,68 L360,72 L400,55 L440,60 L480,42 L520,48 L560,32 L600,38" stroke="#22e5ff" stroke-width="2" fill="none"/>
+            </svg>
+          </div>
+        </main>
+        <aside class="mock-right">
+          <h5>Live runs</h5>
+          <div class="mock-event">
+            <div class="top"><span class="name">triage-bot · #4821</span><span class="time">12s ago</span></div>
+            <div class="desc">Routed to billing tier · 3 reasoning steps</div>
+            <span class="tag">success · 412ms</span>
+          </div>
+          <div class="mock-event">
+            <div class="top"><span class="name">refund-resolver · #318</span><span class="time">28s ago</span></div>
+            <div class="desc">Approved partial refund · escalated to human</div>
+            <span class="tag warn">handoff · 1.2s</span>
+          </div>
+          <div class="mock-event">
+            <div class="top"><span class="name">triage-bot · #4820</span><span class="time">41s ago</span></div>
+            <div class="desc">Closed as resolved · sentiment +0.84</div>
+            <span class="tag">success · 388ms</span>
+          </div>
+          <div class="mock-event">
+            <div class="top"><span class="name">doc-summarizer · #91</span><span class="time">1m ago</span></div>
+            <div class="desc">Summarized 142 pages · cached</div>
+            <span class="tag">success · 2.1s</span>
+          </div>
+        </aside>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- LOGOS -->
+<section class="logos">
+  <div class="container">
+    <div class="label">Trusted by teams shipping AI in production</div>
+    <div class="logos-grid">
+      <div class="logo-pill">◇ Linear</div>
+      <div class="logo-pill">⌬ Notion</div>
+      <div class="logo-pill">◆ Ramp</div>
+      <div class="logo-pill">▲ Vercel</div>
+      <div class="logo-pill">◉ Replit</div>
+      <div class="logo-pill">⬡ Datadog</div>
+    </div>
+  </div>
+</section>
+
+<!-- FEATURES -->
+<section class="features" id="features">
+  <div class="container">
+    <div class="section-head">
+      <div class="section-eyebrow">The platform</div>
+      <h2>Everything you need to <span class="grad">ship agents</span> with confidence.</h2>
+      <p>From the first prompt to the millionth production run — Vexel handles planning, execution, evaluation, and observability in one runtime.</p>
+    </div>
+
+    <div class="feature-grid">
+      <div class="feature span2 featured">
+        <div class="ico">{ }</div>
+        <h3>Define agents in code, not strings.</h3>
+        <p>Compose tools, retrieval, and reasoning into typed graphs. Vexel handles retries, branching, and rollbacks — you write the logic.</p>
+        <div class="feature-visual">
+          <span class="code-line"><span class="code-keyword">from</span> vexel <span class="code-keyword">import</span> Agent, Tool, plan</span>
+          <span class="code-line">&nbsp;</span>
+          <span class="code-line"><span class="code-comment"># Compose deterministic, traceable agents</span></span>
+          <span class="code-line">agent = Agent(</span>
+          <span class="code-line">&nbsp;&nbsp;name=<span class="code-string">"triage-bot"</span>,</span>
+          <span class="code-line">&nbsp;&nbsp;reasoner=<span class="code-string">"vexel/reasoner-3"</span>,</span>
+          <span class="code-line">&nbsp;&nbsp;tools=[Tool.search(), Tool.crm(), Tool.handoff()],</span>
+          <span class="code-line">&nbsp;&nbsp;eval=<span class="code-string">"datasets/golden-tickets"</span>,</span>
+          <span class="code-line">)</span>
+          <span class="code-line">&nbsp;</span>
+          <span class="code-line">result = <span class="code-keyword">await</span> agent.<span class="code-fn">run</span>(ticket, trace=<span class="code-keyword">True</span>)</span>
+        </div>
+      </div>
+
+      <div class="feature">
+        <div class="ico">⌖</div>
+        <h3>Full execution traces.</h3>
+        <p>Every reasoning step, tool call, and token — captured, replayable, and diffable across versions.</p>
+      </div>
+
+      <div class="feature">
+        <div class="ico">⟁</div>
+        <h3>Eval-driven by default.</h3>
+        <p>Promote new agent versions only when they beat the golden dataset. Catch regressions before they ship.</p>
+      </div>
+
+      <div class="feature">
+        <div class="ico">◈</div>
+        <h3>Parallel reasoning at scale.</h3>
+        <p>Vexel's runtime fans out reasoning across thousands of concurrent runs while respecting per-tenant budgets.</p>
+        <div class="feature-mini-bars">
+          <div class="bar" style="height: 30%;"></div>
+          <div class="bar" style="height: 55%;"></div>
+          <div class="bar" style="height: 42%;"></div>
+          <div class="bar" style="height: 78%;"></div>
+          <div class="bar" style="height: 65%;"></div>
+          <div class="bar" style="height: 92%;"></div>
+          <div class="bar" style="height: 80%;"></div>
+          <div class="bar" style="height: 100%;"></div>
+        </div>
+      </div>
+
+      <div class="feature span2">
+        <div class="ico">⊡</div>
+        <h3>Bring any model. Pin any version.</h3>
+        <p>Route per-step between Claude, GPT, Gemini, and your fine-tuned weights. Lock model versions per environment so prod never moves under you.</p>
+        <div class="feature-visual">
+          <span class="code-line"><span class="code-keyword">router</span>: {</span>
+          <span class="code-line">&nbsp;&nbsp;<span class="code-string">"plan"</span>: claude_opus_4_7,&nbsp;&nbsp;<span class="code-comment"># pinned</span></span>
+          <span class="code-line">&nbsp;&nbsp;<span class="code-string">"extract"</span>: gpt_5_mini,&nbsp;&nbsp;<span class="code-comment"># cheap, structured</span></span>
+          <span class="code-line">&nbsp;&nbsp;<span class="code-string">"resolve"</span>: ft_internal_v12,&nbsp;<span class="code-comment"># your weights</span></span>
+          <span class="code-line">}</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- SHOWCASE -->
+<section class="showcase" id="showcase">
+  <div class="container">
+    <div class="showcase-card">
+      <div class="showcase-content">
+        <div class="section-eyebrow">Reasoning graphs</div>
+        <h3>See exactly how your agent decided.</h3>
+        <p>
+          Vexel renders every run as a navigable reasoning graph. Hover any node
+          for the prompt, the model, the cost, and the tokens. Diff two runs
+          side-by-side to see why behavior changed between deploys.
+        </p>
+        <ul class="showcase-list">
+          <li>Step-level cost and latency attribution</li>
+          <li>Replay any run against a different model in one click</li>
+          <li>Export reasoning graphs to your warehouse via webhooks</li>
+        </ul>
+        <a href="#" class="btn btn-primary btn-lg">Explore the runtime →</a>
+      </div>
+
+      <div class="showcase-graph">
+        <svg class="nodes-svg" viewBox="0 0 400 360">
+          <defs>
+            <linearGradient id="nodeg" x1="0" y1="0" x2="1" y2="1">
+              <stop offset="0%" stop-color="#8b5cf6"/>
+              <stop offset="100%" stop-color="#06d4f7"/>
+            </linearGradient>
+            <filter id="glow" x="-50%" y="-50%" width="200%" height="200%">
+              <feGaussianBlur stdDeviation="4" result="blur"/>
+              <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+            </filter>
+          </defs>
+
+          <!-- edges -->
+          <g stroke="#8b5cf6" stroke-width="1.5" fill="none" opacity="0.5">
+            <path d="M200,40 Q200,80 120,120" />
+            <path d="M200,40 Q200,80 280,120" />
+            <path d="M120,120 Q120,170 80,220" />
+            <path d="M120,120 Q120,170 200,220" />
+            <path d="M280,120 Q280,170 200,220" />
+            <path d="M280,120 Q280,170 320,220" />
+            <path d="M80,220 L200,310" />
+            <path d="M200,220 L200,310" />
+            <path d="M320,220 L200,310" />
+          </g>
+
+          <!-- nodes -->
+          <g filter="url(#glow)">
+            <circle cx="200" cy="40" r="22" fill="url(#nodeg)"/>
+            <circle cx="120" cy="120" r="18" fill="#1a1a3a" stroke="#a78bfa" stroke-width="2"/>
+            <circle cx="280" cy="120" r="18" fill="#1a1a3a" stroke="#a78bfa" stroke-width="2"/>
+            <circle cx="80" cy="220" r="16" fill="#1a1a3a" stroke="#22e5ff" stroke-width="2"/>
+            <circle cx="200" cy="220" r="16" fill="#1a1a3a" stroke="#22e5ff" stroke-width="2"/>
+            <circle cx="320" cy="220" r="16" fill="#1a1a3a" stroke="#22e5ff" stroke-width="2"/>
+            <circle cx="200" cy="310" r="22" fill="url(#nodeg)"/>
+          </g>
+
+          <!-- labels -->
+          <g font-family="JetBrains Mono, monospace" font-size="10" fill="#c4c4e2" text-anchor="middle">
+            <text x="200" y="44">in</text>
+            <text x="120" y="124">plan</text>
+            <text x="280" y="124">classify</text>
+            <text x="80" y="224">crm</text>
+            <text x="200" y="224">kb</text>
+            <text x="320" y="224">tool</text>
+            <text x="200" y="314">out</text>
+          </g>
+
+          <g font-family="JetBrains Mono, monospace" font-size="9" fill="#7c7ca0" text-anchor="middle">
+            <text x="200" y="78">reasoner-3 · 142ms</text>
+            <text x="120" y="158">opus · 84ms</text>
+            <text x="280" y="158">haiku · 32ms</text>
+            <text x="200" y="350">resolved · 412ms</text>
+          </g>
+        </svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- STATS -->
+<section class="stats">
+  <div class="container">
+    <div class="stats-grid">
+      <div class="stat-big">
+        <div class="num">99.99%</div>
+        <div class="label">Runtime uptime · trailing 90 days</div>
+      </div>
+      <div class="stat-big">
+        <div class="num">2.4B</div>
+        <div class="label">Reasoning steps executed monthly</div>
+      </div>
+      <div class="stat-big">
+        <div class="num">38%</div>
+        <div class="label">Median cost reduction vs. raw API calls</div>
+      </div>
+      <div class="stat-big">
+        <div class="num">4×</div>
+        <div class="label">Faster eval cycles for product teams</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- PRICING -->
+<section class="pricing" id="pricing">
+  <div class="container">
+    <div class="section-head">
+      <div class="section-eyebrow">Pricing</div>
+      <h2>Start free. <span class="grad">Pay only for runs.</span></h2>
+      <p>No seat fees, no platform fees. Every plan includes the full runtime, the SDK, and unlimited environments.</p>
+    </div>
+
+    <div class="price-grid">
+      <div class="price-card">
+        <h3>Hacker</h3>
+        <div class="price">$0<span> / forever</span></div>
+        <p class="price-desc">Build, evaluate, and ship a single agent in production at no cost.</p>
+        <ul class="price-features">
+          <li>10,000 reasoning steps / mo</li>
+          <li>1 production agent</li>
+          <li>7-day trace retention</li>
+          <li>Community Discord</li>
+        </ul>
+        <a href="#" class="btn btn-secondary">Start free</a>
+      </div>
+
+      <div class="price-card featured">
+        <div class="price-tag">Most popular</div>
+        <h3>Team</h3>
+        <div class="price">$249<span> / mo</span></div>
+        <p class="price-desc">For product teams running agents at meaningful scale.</p>
+        <ul class="price-features">
+          <li>1M reasoning steps included</li>
+          <li>Unlimited agents &amp; environments</li>
+          <li>90-day traces &amp; replays</li>
+          <li>Eval pipelines &amp; webhooks</li>
+          <li>Slack-based support, 4hr SLA</li>
+        </ul>
+        <a href="#" class="btn btn-primary">Start 14-day trial</a>
+      </div>
+
+      <div class="price-card">
+        <h3>Enterprise</h3>
+        <div class="price">Custom</div>
+        <p class="price-desc">VPC deployment, SOC 2 Type II, and a dedicated solutions architect.</p>
+        <ul class="price-features">
+          <li>Volume reasoning credits</li>
+          <li>Self-hosted runtime</li>
+          <li>SSO, SCIM, audit logs</li>
+          <li>BYO model weights &amp; routing</li>
+          <li>99.99% uptime SLA</li>
+        </ul>
+        <a href="#" class="btn btn-secondary">Talk to sales</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- CTA -->
+<section class="cta">
+  <div class="container">
+    <div class="cta-card">
+      <h2>Ship agents you can <br>actually trust in prod.</h2>
+      <p>Get the SDK in two minutes. Your first 10,000 reasoning steps are on us.</p>
+      <div class="cta-buttons">
+        <a href="#" class="btn btn-primary btn-lg">Start building free →</a>
+        <a href="#" class="btn btn-secondary btn-lg">$ pip install vexel</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- FOOTER -->
+<footer>
+  <div class="container">
+    <div class="foot-grid">
+      <div class="foot-brand">
+        <div class="logo">
+          <div class="logo-mark"></div>
+          <span>Vexel</span>
+        </div>
+        <p>The reasoning layer for production agents. Built in San Francisco &amp; Berlin.</p>
+      </div>
+      <div class="foot-col">
+        <h5>Product</h5>
+        <a href="#">Reasoner v3</a>
+        <a href="#">Runtime</a>
+        <a href="#">Evals</a>
+        <a href="#">SDK</a>
+        <a href="#">Changelog</a>
+      </div>
+      <div class="foot-col">
+        <h5>Developers</h5>
+        <a href="#">Documentation</a>
+        <a href="#">API reference</a>
+        <a href="#">Examples</a>
+        <a href="#">Status</a>
+      </div>
+      <div class="foot-col">
+        <h5>Company</h5>
+        <a href="#">About</a>
+        <a href="#">Customers</a>
+        <a href="#">Careers</a>
+        <a href="#">Press kit</a>
+      </div>
+      <div class="foot-col">
+        <h5>Legal</h5>
+        <a href="#">Privacy</a>
+        <a href="#">Terms</a>
+        <a href="#">Security</a>
+        <a href="#">DPA</a>
+      </div>
+    </div>
+    <div class="foot-bottom">
+      <span>© 2026 Vexel Labs Inc.</span>
+      <div class="badges">
+        <span>SOC 2 Type II</span>
+        <span>HIPAA</span>
+        <span>GDPR</span>
+      </div>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>

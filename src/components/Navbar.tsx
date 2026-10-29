@@ -1,152 +1,154 @@
 'use client';
 
-import { useState, useEffect } from 'react';
-import { motion, useMotionValue, useTransform, useSpring } from 'framer-motion';
+import { useEffect, useState } from 'react';
+import { AnimatePresence, motion } from 'framer-motion';
 import { List, X } from '@phosphor-icons/react';
+import MagneticButton from './fx/MagneticButton';
+import { EASE_OUT } from '@/lib/motion';
 
-function MagneticButton({ children, href }: { children: React.ReactNode; href: string }) {
-  const x = useMotionValue(0);
-  const y = useMotionValue(0);
-  const springX = useSpring(x, { stiffness: 150, damping: 15 });
-  const springY = useSpring(y, { stiffness: 150, damping: 15 });
+const links = ['Services', 'Work', 'Process', 'About', 'Pricing'];
 
-  const handleMouse = (e: React.MouseEvent<HTMLAnchorElement>) => {
-    const rect = e.currentTarget.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    x.set((e.clientX - centerX) * 0.3);
-    y.set((e.clientY - centerY) * 0.3);
-  };
-
-  const handleLeave = () => {
-    x.set(0);
-    y.set(0);
-  };
-
-  return (
-    <motion.a
-      href={href}
-      style={{ x: springX, y: springY }}
-      onMouseMove={handleMouse}
-      onMouseLeave={handleLeave}
-      className="relative px-4 py-2 text-sm font-medium text-slate-600 transition-colors hover:text-ocean-deep"
-    >
-      {children}
-    </motion.a>
-  );
-}
-
+// Transparent over the hero water, then contracts into a floating glass pill
+// once the page scrolls.
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false);
-  const [mobileOpen, setMobileOpen] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState('');
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 50);
+    const onScroll = () => setScrolled(window.scrollY > 60);
+    onScroll();
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
   }, []);
 
+  // Highlight the section the visitor is reading, so a long page never
+  // leaves them wondering where they are.
+  useEffect(() => {
+    const ids = links.map((l) => l.toLowerCase()).concat('contact');
+    const els = ids.map((id) => document.getElementById(id)).filter(Boolean) as HTMLElement[];
+    const io = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((e) => {
+          if (e.isIntersecting) setActive(e.target.id);
+        });
+      },
+      { rootMargin: '-45% 0px -50% 0px' },
+    );
+    els.forEach((el) => io.observe(el));
+    return () => io.disconnect();
+  }, []);
+
+  const light = scrolled || open;
+
   return (
-    <motion.nav
-      initial={{ y: -100 }}
-      animate={{ y: 0 }}
-      transition={{ type: 'spring', stiffness: 100, damping: 20 }}
-      className={`fixed top-0 left-0 right-0 z-40 transition-all duration-500 ${
-        scrolled
-          ? 'bg-white/80 backdrop-blur-xl shadow-[0_1px_0_rgba(0,0,0,0.04)] border-b border-slate-200/50'
-          : 'bg-transparent'
-      }`}
+    <motion.header
+      initial={{ y: -40, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.8, ease: EASE_OUT }}
+      className="fixed inset-x-0 top-0 z-50 px-3 pt-3 md:px-6 md:pt-4"
     >
-      <div className="max-w-[1400px] mx-auto px-6 md:px-10">
-        <div className="flex items-center justify-between h-16 md:h-20">
-          {/* Logo */}
-          <a href="#" className="flex items-center gap-2 group">
-            <div className="relative w-9 h-9">
-              <svg viewBox="0 0 40 40" className="w-full h-full">
-                <defs>
-                  <linearGradient id="logoGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                    <stop offset="0%" stopColor="#0e7490" />
-                    <stop offset="100%" stopColor="#22d3ee" />
-                  </linearGradient>
-                </defs>
-                <path
-                  d="M4,25 Q10,15 16,25 Q22,35 28,25 Q34,15 38,20"
-                  fill="none"
-                  stroke="url(#logoGrad)"
-                  strokeWidth="3.5"
-                  strokeLinecap="round"
-                  className="group-hover:animate-[morphWave1_2s_ease-in-out]"
-                />
-                <path
-                  d="M4,30 Q10,22 16,30 Q22,38 28,30 Q34,22 38,27"
-                  fill="none"
-                  stroke="url(#logoGrad)"
-                  strokeWidth="2"
-                  strokeLinecap="round"
-                  opacity="0.4"
-                />
-              </svg>
-            </div>
-            <span className="text-xl font-bold tracking-tight text-ocean-deep">
-              VAWES
-            </span>
-          </a>
-
-          {/* Desktop Nav */}
-          <div className="hidden md:flex items-center gap-1">
-            <MagneticButton href="#services">Services</MagneticButton>
-            <MagneticButton href="#work">Work</MagneticButton>
-            <MagneticButton href="#process">Process</MagneticButton>
-            <MagneticButton href="#about">About</MagneticButton>
-            <MagneticButton href="#pricing">Pricing</MagneticButton>
-            <motion.a
-              href="#contact"
-              whileHover={{ scale: 1.04 }}
-              whileTap={{ scale: 0.97 }}
-              className="ml-4 px-6 py-2.5 bg-ocean-deep text-white text-sm font-medium rounded-full
-                         hover:bg-ocean-mid transition-colors shadow-[0_4px_16px_-4px_rgba(14,116,144,0.4)]"
-            >
-              Start a Project
-            </motion.a>
-          </div>
-
-          {/* Mobile menu button */}
-          <button
-            onClick={() => setMobileOpen(!mobileOpen)}
-            className="md:hidden p-2 text-slate-700"
-          >
-            {mobileOpen ? <X size={24} weight="bold" /> : <List size={24} weight="bold" />}
-          </button>
-        </div>
-      </div>
-
-      {/* Mobile Menu */}
-      <motion.div
-        initial={false}
-        animate={mobileOpen ? { height: 'auto', opacity: 1 } : { height: 0, opacity: 0 }}
-        transition={{ type: 'spring', stiffness: 200, damping: 25 }}
-        className="md:hidden overflow-hidden bg-white/95 backdrop-blur-xl border-b border-slate-200/50"
+      <nav
+        aria-label="Main"
+        className={`mx-auto flex items-center justify-between rounded-full transition-all duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] ${
+          light
+            ? 'max-w-[980px] border border-white/10 bg-[#071E33]/75 py-2 pl-5 pr-2 shadow-[0_14px_40px_-12px_rgba(0,0,0,0.5)] backdrop-blur-xl'
+            : 'max-w-[1400px] border border-transparent py-3 pl-2 pr-2 md:pl-4'
+        }`}
       >
-        <div className="px-6 py-6 flex flex-col gap-4">
-          {['Services', 'Work', 'Process', 'About', 'Pricing'].map((item) => (
+        <a href="#top" aria-label="VAWES, back to top" className="flex items-center">
+          <img
+            src="/logo/vawes-wordmark-sm.webp"
+            width={585}
+            height={144}
+            alt="VAWES"
+            className="h-8 w-auto brightness-0 invert md:h-10"
+          />
+        </a>
+
+        <div className="hidden items-center gap-7 md:flex">
+          {links.map((l) => (
             <a
-              key={item}
-              href={`#${item.toLowerCase()}`}
-              onClick={() => setMobileOpen(false)}
-              className="text-lg font-medium text-slate-700 hover:text-ocean-deep transition-colors"
+              key={l}
+              href={`#${l.toLowerCase()}`}
+              aria-current={active === l.toLowerCase() ? 'location' : undefined}
+              className={`wave-link text-[15px] font-medium transition-colors aria-[current]:[background-size:20px_6px] ${
+                'text-white/70 hover:text-white aria-[current]:text-white'
+              }`}
             >
-              {item}
+              <span className="sr-only">{l}</span>
+              <span className="roll" aria-hidden="true">
+                {[0, 1].map((row) => (
+                  <span key={row} className="roll-row">
+                    {Array.from(l).map((ch, c) => (
+                      <span key={c} style={{ '--c': c } as React.CSSProperties}>
+                        {ch}
+                      </span>
+                    ))}
+                  </span>
+                ))}
+              </span>
             </a>
           ))}
-          <a
-            href="#contact"
-            onClick={() => setMobileOpen(false)}
-            className="mt-2 px-6 py-3 bg-ocean-deep text-white text-center font-medium rounded-full"
-          >
-            Start a Project
-          </a>
         </div>
-      </motion.div>
-    </motion.nav>
+
+        <div className="flex items-center gap-2">
+          <MagneticButton href="#contact" tone={light ? 'cyan' : 'glass'} className="!px-5 !py-2.5 !text-sm max-md:hidden">
+            Get a quote
+          </MagneticButton>
+          <button
+            type="button"
+            onClick={() => setOpen((o) => !o)}
+            aria-expanded={open}
+            aria-controls="mobile-menu"
+            aria-label={open ? 'Close menu' : 'Open menu'}
+            className={`grid h-11 w-11 place-items-center rounded-full md:hidden ${
+              'bg-white/10 text-white backdrop-blur'
+            }`}
+          >
+            {open ? <X size={20} weight="bold" /> : <List size={20} weight="bold" />}
+          </button>
+        </div>
+      </nav>
+
+      <AnimatePresence>
+        {open && (
+          <motion.div
+            id="mobile-menu"
+            initial={{ opacity: 0, y: -12, scale: 0.98 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: -12, scale: 0.98 }}
+            transition={{ duration: 0.35, ease: EASE_OUT }}
+            className="mx-auto mt-2 max-w-[980px] rounded-[28px] border border-white/10 bg-[#071E33]/95 p-6 shadow-[0_20px_60px_-20px_rgba(0,0,0,0.6)] backdrop-blur-xl md:hidden"
+          >
+            <ul className="grid gap-1">
+              {links.map((l, i) => (
+                <motion.li
+                  key={l}
+                  initial={{ opacity: 0, x: -12 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  transition={{ delay: 0.05 + i * 0.04 }}
+                >
+                  <a
+                    href={`#${l.toLowerCase()}`}
+                    onClick={() => setOpen(false)}
+                    className="block py-1.5 font-display text-4xl font-bold tracking-tight text-white [font-variation-settings:'wdth'_80]"
+                  >
+                    {l}
+                  </a>
+                </motion.li>
+              ))}
+            </ul>
+            <a
+              href="#contact"
+              onClick={() => setOpen(false)}
+              className="mt-6 block rounded-full bg-light-cyan px-6 py-4 text-center font-semibold text-abyss"
+            >
+              Get a quote
+            </a>
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.header>
   );
 }

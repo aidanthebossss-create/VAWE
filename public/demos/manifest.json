@@ -1,0 +1,24 @@
+{
+  "demos": [
+    {
+      "slug": "example-bloom",
+      "title": "Bloom — Plant Care App",
+      "client": "Example Client",
+      "status": "review",
+      "note": "Sample entry so you can see how a demo looks here. Delete it once you add real ones. See docs/demo-hub.md for instructions.",
+      "tags": ["Landing", "Marketing"],
+      "updated": "2026-06-02",
+      "url": "/mock-bloom/index.html"
+    },
+    {
+      "slug": "example-cdc",
+      "title": "CDC Diving — Ops Dashboard",
+      "client": "Example Client",
+      "status": "draft",
+      "note": "Another sample entry. Replace these two with your own client demos.",
+      "tags": ["Dashboard", "Internal tool"],
+      "updated": "2026-06-02",
+      "url": "/mock-cdc/index.html"
+    }
+  ]
+}

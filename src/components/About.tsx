@@ -1,172 +1,187 @@
 'use client';
 
-import { motion, useInView, useScroll, useTransform } from 'framer-motion';
-import { useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
+import { animate, motion, useInView, useScroll, useTransform, type MotionValue } from 'framer-motion';
+import SectionHeading from './fx/SectionHeading';
+import StretchText from './fx/StretchText';
+import WaveLines from './fx/WaveLines';
+import { useMotionAllowed } from '@/lib/motion-pref';
+import { EASE_OUT } from '@/lib/motion';
 
-const stats = [
-  { value: '47+', label: 'Projects Delivered' },
-  { value: '98%', label: 'Client Retention' },
-  { value: '4.9', label: 'Average Rating' },
-  { value: '<2s', label: 'Avg Load Time' },
+const manifesto =
+  'VAWES started with a simple belief: the web should move people. We are a two-person design and engineering studio in South Africa, and every site we ship is hand-built, tested on real phones and made to bring in business.';
+
+const founders = [
+  {
+    initial: 'L',
+    name: 'Liam',
+    role: 'Co-founder · Creative',
+    focus: ['Brand identity', 'UI design', 'Art direction'],
+    tone: 'from-[#2389A4] via-[#11426D] to-[#071E33]',
+  },
+  {
+    initial: 'A',
+    name: 'Aidan',
+    role: 'Co-founder · Engineering',
+    focus: ['Next.js & React', 'Performance', 'E-commerce'],
+    tone: 'from-[#2A9D8F] via-[#0E3A4F] to-[#071E33]',
+  },
 ];
 
-function AnimatedCounter({ value, delay }: { value: string; delay: number }) {
-  const ref = useRef<HTMLSpanElement>(null);
-  const isInView = useInView(ref, { once: true });
+const stats = [
+  { prefix: '', value: 24, decimals: 0, suffix: 'h', label: 'Response time', note: 'How fast we reply' },
+  { prefix: '', value: 98, decimals: 0, suffix: '%', label: 'Client retention', note: 'Clients who come back' },
+  { prefix: '', value: 4.9, decimals: 1, suffix: '', label: 'Average rating', note: 'Across client reviews' },
+  { prefix: '<', value: 2, decimals: 0, suffix: 's', label: 'Average load time', note: 'Typical page load' },
+];
 
+const principles = [
+  { title: 'Hand-built, never templated', body: 'Every layout is designed for your business and coded from scratch, so it fits instead of almost fitting.' },
+  { title: 'Fast by default', body: 'Speed is part of the design, not an afterthought. Lighter pages rank better and cost your visitors less data.' },
+  { title: 'Straight answers', body: 'A fixed quote before we start, one person to talk to and plain-language updates the whole way through.' },
+];
+
+// Each word brightens as the reader scrolls through the statement.
+function Word({ word, i, total, progress }: { word: string; i: number; total: number; progress: MotionValue<number> }) {
+  const opacity = useTransform(progress, [i / total, (i + 1) / total], [0.18, 1]);
   return (
-    <motion.span
-      ref={ref}
-      initial={{ opacity: 0, y: 20 }}
-      animate={isInView ? { opacity: 1, y: 0 } : {}}
-      transition={{ delay, type: 'spring', stiffness: 100, damping: 20 }}
-      className="text-3xl md:text-4xl font-bold tracking-tighter text-zinc-900"
-    >
-      {value}
+    <motion.span style={{ opacity }} className="inline">
+      {word}{' '}
     </motion.span>
   );
 }
 
-export default function About() {
-  const sectionRef = useRef<HTMLDivElement>(null);
-  const { scrollYProgress } = useScroll({
-    target: sectionRef,
-    offset: ['start end', 'end start'],
-  });
+function Manifesto() {
+  const ref = useRef<HTMLParagraphElement>(null);
+  const motionOk = useMotionAllowed();
+  const { scrollYProgress } = useScroll({ target: ref, offset: ['start 85%', 'end 55%'] });
+  const words = manifesto.split(' ');
+  return (
+    <p
+      ref={ref}
+      className="max-w-[30ch] font-display text-[clamp(1.9rem,4vw,3.6rem)] font-semibold leading-[1.12] tracking-[-0.025em] text-ink [font-variation-settings:'wdth'_88]"
+    >
+      {motionOk
+        ? words.map((w, i) => <Word key={i} word={w} i={i} total={words.length} progress={scrollYProgress} />)
+        : manifesto}
+    </p>
+  );
+}
 
-  const rotate = useTransform(scrollYProgress, [0, 1], [0, 360]);
+// Counts up like a tide marker rising when it first scrolls into view.
+function Counter({ s }: { s: (typeof stats)[number] }) {
+  const ref = useRef<HTMLSpanElement>(null);
+  const inView = useInView(ref, { once: true, margin: '-15%' });
+  const reduce = !useMotionAllowed();
+  const [v, setV] = useState(0);
+
+  useEffect(() => {
+    if (!inView || reduce) return;
+    const c = animate(0, s.value, { duration: 1.6, ease: EASE_OUT, onUpdate: setV });
+    return () => c.stop();
+  }, [inView, reduce, s.value]);
 
   return (
-    <section id="about" ref={sectionRef} className="relative py-24 md:py-32 bg-ocean-foam/40">
-      {/* Spinning wave decoration */}
-      <motion.div
-        style={{ rotate }}
-        className="absolute top-20 right-10 md:right-20 opacity-[0.06] pointer-events-none"
-      >
-        <svg width="200" height="200" viewBox="0 0 200 200">
-          <path
-            d="M100,10 Q130,50 100,100 Q70,150 100,190"
-            fill="none"
-            stroke="#0e7490"
-            strokeWidth="4"
-            strokeLinecap="round"
-          />
-          <path
-            d="M10,100 Q50,70 100,100 Q150,130 190,100"
-            fill="none"
-            stroke="#0e7490"
-            strokeWidth="4"
-            strokeLinecap="round"
-          />
-        </svg>
-      </motion.div>
+    <span ref={ref} className="tabular-nums">
+      {s.prefix}
+      {(reduce ? s.value : v).toFixed(s.decimals)}
+      {s.suffix}
+    </span>
+  );
+}
 
-      <div className="max-w-[1400px] mx-auto px-6 md:px-10">
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-16 lg:gap-20">
-          {/* Left Content - 3 cols */}
-          <div className="lg:col-span-3">
-            <motion.span
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ type: 'spring', stiffness: 100, damping: 20 }}
-              className="inline-block text-sm font-medium text-ocean-mid tracking-wide uppercase mb-4"
-            >
-              About VAWES
-            </motion.span>
-            <motion.h2
-              initial={{ opacity: 0, y: 30 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.1, type: 'spring', stiffness: 100, damping: 20 }}
-              className="text-3xl md:text-5xl font-bold tracking-tighter text-zinc-900 leading-tight mb-8"
-            >
-              Two builders,
-              <br />
-              one <span className="text-ocean-mid">ocean</span> of ideas
-            </motion.h2>
+// A tall deep-water card per founder. The giant initial stretches toward the
+// cursor; swap the gradient for a portrait once photos are ready.
+function FounderCard({ f }: { f: (typeof founders)[number] }) {
+  return (
+    <article data-reveal="unmask" className="relative overflow-hidden rounded-[28px]">
+      <div className={`grain relative flex min-h-[22rem] sm:aspect-[4/5] sm:min-h-[28rem] flex-col justify-between gap-6 overflow-hidden bg-gradient-to-br p-7 text-white md:p-9 ${f.tone}`}>
+        <WaveLines
+          onView
+          colors={['rgba(191,239,247,0.5)', 'rgba(108,204,224,0.4)', 'rgba(61,174,197,0.35)']}
+          className="pointer-events-none absolute -left-[20%] top-[38%] h-32 w-[140%] opacity-70"
+        />
+        <p className="eyebrow relative text-light-cyan/90">{f.role}</p>
+        <StretchText
+          as="p"
+          lines={[f.initial]}
+          reveal={false}
+          min={75}
+          max={100}
+          radius={260}
+          className="relative font-display text-[clamp(7rem,11vw,12rem)] font-extrabold leading-[0.8] tracking-[-0.06em] text-white/90"
+        />
+        <div className="relative">
+          <h3 className="font-display text-4xl font-bold tracking-tight">{f.name}</h3>
+          <ul className="mt-4 flex flex-wrap gap-2">
+            {f.focus.map((x) => (
+              <li key={x} className="rounded-full border border-white/20 bg-white/[0.08] px-3 py-1 text-sm text-white/85">
+                {x}
+              </li>
+            ))}
+          </ul>
+        </div>
+      </div>
+    </article>
+  );
+}
 
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.2, type: 'spring', stiffness: 100, damping: 20 }}
-              className="space-y-5 text-slate-500 leading-relaxed max-w-[60ch]"
-            >
-              <p>
-                VAWES (Vuyo and Aidan Website Enterprises) was born from a shared
-                belief: the web should move people. Not just inform them, not just
-                look polished, but create a current they want to follow.
-              </p>
-              <p>
-                We are a design-engineering duo based in South Africa, combining
-                creative instinct with technical precision. Every project we touch
-                is hand-crafted, rigorously tested, and built to perform under
-                real-world conditions.
-              </p>
-              <p>
-                The wave in our name is more than branding. It represents momentum,
-                rhythm, and the natural pull of great design. We build websites
-                that carry that energy from the first pixel to the final deploy.
-              </p>
-            </motion.div>
+// The studio: a statement that lights up as you read it, the two people
+// behind the work, how we work, and the numbers.
+export default function About() {
+  return (
+    <section id="about" className="sheet bg-paper-2 py-24 text-ink md:py-36">
+      <div className="mx-auto max-w-[1400px] px-5 md:px-10">
+        <div className="flex flex-wrap items-end justify-between gap-6">
+          <SectionHeading eyebrow="05 · About VAWES" lines={['Two builders,', 'one *ocean* of ideas']} />
+          <p data-reveal="wipe" className="eyebrow text-ink-soft">
+            Web design &amp; development studio · South Africa
+          </p>
+        </div>
 
-            {/* Team */}
-            <motion.div
-              initial={{ opacity: 0, y: 20 }}
-              whileInView={{ opacity: 1, y: 0 }}
-              viewport={{ once: true }}
-              transition={{ delay: 0.3, type: 'spring', stiffness: 100, damping: 20 }}
-              className="flex flex-wrap gap-6 mt-10"
-            >
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-ocean-mid to-ocean-light
-                                flex items-center justify-center text-white font-bold text-lg">
-                  V
-                </div>
-                <div>
-                  <div className="font-semibold text-zinc-900 text-sm">Vuyo</div>
-                  <div className="text-xs text-slate-400">Co-Founder & Creative</div>
-                </div>
-              </div>
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-full bg-gradient-to-br from-zinc-700 to-zinc-900
-                                flex items-center justify-center text-white font-bold text-lg">
-                  A
-                </div>
-                <div>
-                  <div className="font-semibold text-zinc-900 text-sm">Aidan</div>
-                  <div className="text-xs text-slate-400">Co-Founder & Engineering</div>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-
-          {/* Right - Stats */}
-          <div className="lg:col-span-2 flex items-center">
-            <div className="grid grid-cols-2 gap-8 w-full">
-              {stats.map((stat, i) => (
-                <motion.div
-                  key={stat.label}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  whileInView={{ opacity: 1, scale: 1 }}
-                  viewport={{ once: true }}
-                  transition={{
-                    delay: i * 0.1,
-                    type: 'spring',
-                    stiffness: 100,
-                    damping: 20,
-                  }}
-                  className="text-center p-6 rounded-[1.5rem] bg-white border border-slate-200/60
-                             shadow-[0_2px_8px_-2px_rgba(0,0,0,0.04)]"
+        <div className="mt-16 grid gap-12 md:mt-24 lg:grid-cols-[minmax(0,1.05fr)_minmax(0,1fr)] lg:gap-16">
+          <div className="grid content-between gap-12">
+            <Manifesto />
+            <ol className="grid gap-6 sm:grid-cols-3 lg:grid-cols-1 xl:grid-cols-3">
+              {principles.map((p, i) => (
+                <li
+                  key={p.title}
+                  data-reveal="fade"
+                  style={{ '--d': `${i * 90}ms` } as React.CSSProperties}
+                  className="grid content-start gap-2 border-t border-ink/15 pt-5"
                 >
-                  <AnimatedCounter value={stat.value} delay={i * 0.1 + 0.2} />
-                  <div className="text-sm text-slate-400 mt-1 font-medium">{stat.label}</div>
-                </motion.div>
+                  <span className="font-mono text-xs text-ocean-teal">{String(i + 1).padStart(2, '0')}</span>
+                  <h3 className="font-display text-xl font-bold tracking-tight">{p.title}</h3>
+                  <p className="text-[15px] leading-relaxed text-ink-soft">{p.body}</p>
+                </li>
               ))}
-            </div>
+            </ol>
+          </div>
+          <div className="grid content-start items-start gap-5 sm:grid-cols-2 lg:sticky lg:top-28 lg:self-start">
+            {founders.map((f) => (
+              <FounderCard key={f.name} f={f} />
+            ))}
           </div>
         </div>
+
+        <dl data-reveal="fade" className="mt-20 grid grid-cols-2 rounded-[28px] border border-ink/10 bg-white/60 md:mt-28 lg:grid-cols-4">
+          {stats.map((s, i) => (
+            <div
+              key={s.label}
+              className={`grid gap-2 p-6 md:p-8 ${i % 2 === 1 ? 'border-l border-ink/10' : ''} ${
+                i >= 2 ? 'border-t border-ink/10 lg:border-t-0' : ''
+              } ${i === 2 ? 'lg:border-l' : ''}`}
+            >
+              <dt className="order-2 grid gap-0.5">
+                <span className="text-sm font-semibold text-ink">{s.label}</span>
+                <span className="text-xs text-ink-soft">{s.note}</span>
+              </dt>
+              <dd className="order-1 font-display text-[clamp(2.8rem,5vw,4.6rem)] font-bold leading-none tracking-[-0.04em] text-deep-navy [font-variation-settings:'wdth'_80]">
+                <Counter s={s} />
+              </dd>
+            </div>
+          ))}
+        </dl>
       </div>
     </section>
   );

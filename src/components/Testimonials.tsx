@@ -1,105 +1,177 @@
 'use client';
 
-import { motion, useInView } from 'framer-motion';
-import { useRef, useState, useEffect } from 'react';
-import { Star } from '@phosphor-icons/react';
+import { ArrowUpRight } from '@phosphor-icons/react';
+import SectionHeading from './fx/SectionHeading';
+import { scrollState } from '@/lib/scroll-state';
+
+/** Fired to show a project in the Work section's preview window. */
+export const PROJECT_EVENT = 'vawes:project';
 
 const testimonials = [
   {
-    name: 'Thandi Mokoena',
-    role: 'Founder, Kelp & Co',
-    text: 'VAWES transformed our online presence completely. The site they built for us loads in under a second and our conversion rate tripled within the first month.',
-    rating: 5,
+    name: 'Demi Roach',
+    role: 'Owner, U TIME Beauty by Demi',
+    text: 'The site captures the calm, premium feel we wanted clients to experience before they even walk in. Bookings are up and the gallery does the heavy lifting.',
+    projectId: 1,
+    project: 'U TIME Beauty by Demi',
+    image: '/mock-shots/1.webp',
   },
   {
-    name: 'Marco Delport',
-    role: 'CTO, Prism Analytics',
-    text: 'Working with Vuyo and Aidan felt like having senior engineers on our team. They built a complex dashboard that our users genuinely enjoy using.',
-    rating: 5,
+    name: 'Raymond Taylor',
+    role: 'CEO, CDC Diving',
+    text: 'The ops dashboard turned a stack of spreadsheets into something the dive team actually opens every morning. Compliance and crew assignments finally live in one place.',
+    projectId: 2,
+    project: 'CDC Diving Ops Dashboard',
+    image: '/mock-shots/2.webp',
   },
   {
-    name: 'Fatima Hassan',
-    role: 'Director, Meridian Architecture',
-    text: 'They understood our aesthetic immediately. The parallax galleries and scroll animations they created perfectly showcase our architectural work.',
-    rating: 5,
+    name: 'Lucas Pereira',
+    role: 'Founder, Vexel AI',
+    text: 'A landing page that respects developers. No hype, just signal. Trial signups doubled in the first two weeks after launch.',
+    projectId: 3,
+    project: 'Vexel AI',
+    image: '/mock-shots/3.webp',
   },
 ];
 
-function TestimonialCard({ testimonial, index }: { testimonial: typeof testimonials[0]; index: number }) {
-  const ref = useRef<HTMLDivElement>(null);
-  const isInView = useInView(ref, { once: true, margin: '-80px' });
+type T = (typeof testimonials)[number];
 
+const initials = (n: string) => n.split(' ').map((p) => p[0]).join('');
+
+// Jump to the Work section with this project already in the window.
+function showProject(id: number) {
+  window.dispatchEvent(new CustomEvent(PROJECT_EVENT, { detail: id }));
+  const target = document.getElementById('work-showcase') ?? document.getElementById('work');
+  if (!target) return;
+  if (scrollState.lenis) scrollState.lenis.scrollTo(target, { offset: -110 });
+  else target.scrollIntoView({ behavior: 'smooth' });
+}
+
+function ProjectLink({ t, tone }: { t: T; tone: 'light' | 'dark' }) {
   return (
-    <motion.div
-      ref={ref}
-      initial={{ opacity: 0, y: 40 }}
-      animate={isInView ? { opacity: 1, y: 0 } : {}}
-      transition={{
-        delay: index * 0.15,
-        type: 'spring',
-        stiffness: 80,
-        damping: 20,
-      }}
-      className="relative p-8 md:p-10 rounded-[2rem] bg-white border border-slate-200/60
-                 shadow-[0_2px_8px_-2px_rgba(0,0,0,0.04)] hover:shadow-[0_12px_32px_-8px_rgba(0,0,0,0.08)]
-                 transition-shadow duration-500"
+    <button
+      type="button"
+      onClick={() => showProject(t.projectId)}
+      className={`wave-link inline-flex items-center gap-1.5 justify-self-start text-sm font-medium ${
+        tone === 'dark' ? 'text-white/80 hover:text-white' : 'text-ink'
+      }`}
     >
-      {/* Stars */}
-      <div className="flex gap-1 mb-6">
-        {Array.from({ length: testimonial.rating }).map((_, i) => (
-          <Star key={i} size={16} weight="fill" className="text-amber-400" />
-        ))}
-      </div>
-
-      <p className="text-slate-600 leading-relaxed mb-8 text-[15px]">
-        &ldquo;{testimonial.text}&rdquo;
-      </p>
-
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-full bg-gradient-to-br from-ocean-mid/20 to-ocean-light/20
-                        flex items-center justify-center">
-          <span className="text-sm font-bold text-ocean-deep">
-            {testimonial.name.split(' ').map(n => n[0]).join('')}
-          </span>
-        </div>
-        <div>
-          <div className="text-sm font-semibold text-zinc-900">{testimonial.name}</div>
-          <div className="text-xs text-slate-400">{testimonial.role}</div>
-        </div>
-      </div>
-    </motion.div>
+      See the project <ArrowUpRight size={14} weight="bold" />
+    </button>
   );
 }
 
-export default function Testimonials() {
+function Person({ t, tone }: { t: T; tone: 'light' | 'dark' }) {
+  const dark = tone === 'dark';
   return (
-    <section className="relative py-24 md:py-32">
-      <div className="max-w-[1400px] mx-auto px-6 md:px-10">
-        <div className="text-center mb-16 md:mb-20">
-          <motion.span
-            initial={{ opacity: 0, y: 20 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ type: 'spring', stiffness: 100, damping: 20 }}
-            className="inline-block text-sm font-medium text-ocean-mid tracking-wide uppercase mb-4"
+    <figcaption className="flex items-center gap-4">
+      <span
+        aria-hidden="true"
+        className={`grid h-12 w-12 shrink-0 place-items-center rounded-full font-display text-base font-bold ${
+          dark ? 'bg-white/10 text-light-cyan ring-1 ring-white/15' : 'bg-deep-navy text-light-cyan'
+        }`}
+      >
+        {initials(t.name)}
+      </span>
+      <span>
+        <span className={`block font-semibold ${dark ? 'text-white' : 'text-ink'}`}>{t.name}</span>
+        <span className={`text-sm ${dark ? 'text-white/55' : 'text-ink-soft'}`}>{t.role}</span>
+      </span>
+    </figcaption>
+  );
+}
+
+// Proof, not decoration: one featured quote from the live client site in a
+// deep-water card, two supporting quotes, and every quote linked to the work.
+export default function Testimonials() {
+  const [featured, ...rest] = testimonials;
+  return (
+    <section aria-label="Client testimonials" className="sheet bg-paper py-24 text-ink md:py-36">
+      <div className="mx-auto max-w-[1400px] px-5 md:px-10">
+        <div className="flex flex-wrap items-end justify-between gap-6">
+          <SectionHeading eyebrow="07 · Client words" lines={['Riding the', 'same *wave*']} />
+          <p
+            data-reveal="fade"
+            style={{ '--d': '300ms' } as React.CSSProperties}
+            className="max-w-[36ch] text-lg leading-relaxed text-ink-soft"
           >
-            Client Words
-          </motion.span>
-          <motion.h2
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            transition={{ delay: 0.1, type: 'spring', stiffness: 100, damping: 20 }}
-            className="text-3xl md:text-5xl font-bold tracking-tighter text-zinc-900"
-          >
-            Riding the same <span className="text-ocean-mid">wave</span>
-          </motion.h2>
+            What the people we&apos;ve built for say, next to the work itself.
+          </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {testimonials.map((t, i) => (
-            <TestimonialCard key={t.name} testimonial={t} index={i} />
-          ))}
+        <div className="mt-14 grid gap-5 md:mt-20 lg:grid-cols-[minmax(0,1.45fr)_minmax(0,1fr)]">
+          {/* Featured quote */}
+          <figure data-reveal="unmask" className="relative overflow-hidden rounded-[32px]">
+            <div className="grain relative grid h-full content-between gap-10 overflow-hidden bg-[linear-gradient(160deg,#11426D_0%,#0B2A45_55%,#071E33_100%)] p-8 text-white md:p-12">
+              <div className="relative grid gap-6">
+                <span aria-hidden="true" className="font-display text-7xl font-extrabold leading-[0.5] text-light-cyan">
+                  &ldquo;
+                </span>
+                <blockquote className="max-w-[26ch] font-display text-[clamp(1.8rem,3.2vw,3rem)] font-semibold leading-[1.12] tracking-[-0.02em] [font-variation-settings:'wdth'_88]">
+                  {featured.text}
+                </blockquote>
+              </div>
+              <div className="relative flex flex-wrap items-end justify-between gap-6">
+                <div className="grid gap-4">
+                  <Person t={featured} tone="dark" />
+                  <ProjectLink t={featured} tone="dark" />
+                </div>
+                <button
+                  type="button"
+                  onClick={() => showProject(featured.projectId)}
+                  aria-label={`See ${featured.project}`}
+                  className="group w-48 overflow-hidden rounded-xl ring-1 ring-white/15 transition-transform duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 sm:w-56"
+                >
+                  <span className="flex h-5 items-center gap-1 bg-white/10 px-2">
+                    <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
+                    <span className="h-1.5 w-1.5 rounded-full bg-white/40" />
+                  </span>
+                  <img
+                    src={featured.image}
+                    alt=""
+                    loading="lazy"
+                    className="aspect-[16/10] w-full object-cover object-top transition-transform duration-700 group-hover:scale-105"
+                  />
+                </button>
+              </div>
+            </div>
+          </figure>
+
+          {/* Supporting quotes */}
+          <div className="grid gap-5">
+            {rest.map((t, i) => (
+              <figure
+                key={t.name}
+                data-reveal="fade"
+                style={{ '--d': `${150 + i * 120}ms` } as React.CSSProperties}
+                className="group grid content-start gap-6 rounded-[28px] border border-line bg-white/70 p-6 transition-[transform,box-shadow] duration-500 ease-[cubic-bezier(0.16,1,0.3,1)] hover:-translate-y-1 hover:shadow-[0_30px_60px_-35px_rgba(7,30,51,0.35)] md:p-7"
+              >
+                <button
+                  type="button"
+                  onClick={() => showProject(t.projectId)}
+                  aria-label={`See ${t.project}`}
+                  className="overflow-hidden rounded-xl ring-1 ring-ink/10"
+                >
+                  <img
+                    src={t.image}
+                    alt=""
+                    loading="lazy"
+                    className="aspect-[16/6] w-full object-cover object-top transition-transform duration-700 group-hover:scale-[1.04]"
+                  />
+                </button>
+                <blockquote className="font-display text-[clamp(1.2rem,1.6vw,1.45rem)] font-semibold leading-[1.25] tracking-[-0.01em] text-ink [font-variation-settings:'wdth'_92]">
+                  <span className="text-ocean-teal">&ldquo;</span>
+                  {t.text}
+                  <span className="text-ocean-teal">&rdquo;</span>
+                </blockquote>
+                <div className="flex flex-wrap items-center justify-between gap-4">
+                  <Person t={t} tone="light" />
+                  <ProjectLink t={t} tone="light" />
+                </div>
+              </figure>
+            ))}
+          </div>
         </div>
       </div>
     </section>
